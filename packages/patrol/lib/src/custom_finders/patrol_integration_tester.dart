@@ -2,6 +2,7 @@
 // Its usage is necessary to provide backward compatibility for users relying on 'nativeAutomator'.
 // ignore_for_file: deprecated_member_use_from_same_package
 
+import 'package:flutter/foundation.dart';
 import 'package:patrol/src/native/native.dart';
 import 'package:patrol/src/platform/platform_automator.dart';
 import 'package:patrol_finders/patrol_finders.dart' as finders;
@@ -18,6 +19,11 @@ class PatrolIntegrationTester extends finders.PatrolTester {
   }) : _patrolLog = PatrolLogWriter() {
     nativeAutomator = NativeAutomator(platformAutomator: platformAutomator);
     nativeAutomator2 = NativeAutomator2(platformAutomator: platformAutomator);
+
+    if (kIsWeb) {
+      onStepCompleted = (action) =>
+          platformAutomator.web.takeScreenshot(action: action);
+    }
   }
 
   /// The log for the patrol.

@@ -17,6 +17,7 @@ import { resizeWindow } from "./actions/resizeWindow"
 import { scrollTo } from "./actions/scrollTo"
 import { setClipboard } from "./actions/setClipboard"
 import { startTest } from "./actions/startTest"
+import { takeScreenshot } from "./actions/takeScreenshot"
 import { tap } from "./actions/tap"
 import { uploadFile } from "./actions/uploadFile"
 import { verifyFileDownloads } from "./actions/verifyFileDownloads"
@@ -44,4 +45,5 @@ export const actions = {
   getClipboard,
   setClipboard,
   resizeWindow,
+  takeScreenshot,
 } as const

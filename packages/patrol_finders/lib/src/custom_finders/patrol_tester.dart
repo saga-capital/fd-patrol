@@ -132,6 +132,10 @@ class PatrolTester {
   PatrolTester({required this.tester, required this.config})
     : patrolLog = PatrolLogWriter();
 
+  /// Optional callback invoked after each action (tap, enterText, etc.)
+  /// completes successfully. Can be used to trigger screenshots on web.
+  Future<void> Function(String action)? onStepCompleted;
+
   /// Global configuration of this tester.
   final PatrolTesterConfig config;
 
@@ -166,6 +170,7 @@ class PatrolTester {
     patrolLog.log(StepEntry(action: text, status: StepEntryStatus.start));
     try {
       final result = await function();
+      await onStepCompleted?.call(action);
       patrolLog.log(StepEntry(action: text, status: StepEntryStatus.success));
       return result;
     } catch (err) {

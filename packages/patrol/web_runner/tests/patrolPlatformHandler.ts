@@ -29,7 +29,12 @@ async function handlePatrolPlatformAction(page: Page, { action, params }: Patrol
     const result = await actionFn(page, params as any)
 
     if (screenshotMode === "on" || screenshotMode === "each-step") {
-      await takeStepScreenshot(page, action)
+      // For takeScreenshot, use the provided action name for a meaningful label
+      const screenshotLabel =
+        action === "takeScreenshot" && params && (params as any).action
+          ? (params as any).action
+          : action
+      await takeStepScreenshot(page, screenshotLabel)
     }
 
     return result
