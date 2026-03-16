@@ -302,6 +302,7 @@ See https://github.com/leancodepl/patrol/issues/1316 to learn more.
       retries: intArg('web-retries'),
       video: stringArg('web-video'),
       screenshot: stringArg('web-screenshot'),
+      trace: stringArg('web-trace'),
       timeout: intArg('web-timeout'),
       workers: intArg('web-workers'),
       reporter: stringArg('web-reporter'),

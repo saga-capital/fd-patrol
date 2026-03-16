@@ -155,7 +155,9 @@ class PatrolTester {
     bool enablePatrolLog = true,
   }) async {
     if (!(config.printLogs && enablePatrolLog)) {
-      return function();
+      final result = await function();
+      await onStepCompleted?.call(action);
+      return result;
     }
 
     final finderText =

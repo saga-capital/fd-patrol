@@ -267,6 +267,11 @@ abstract class PatrolCommand extends Command<int> {
         valueHelp: 'off | on | only-on-failure | each-step',
       )
       ..addOption(
+        'web-trace',
+        help: 'Trace recording mode. Enables the Playwright Trace Viewer timeline.',
+        valueHelp: 'off | on | retain-on-failure | on-first-retry',
+      )
+      ..addOption(
         'web-timeout',
         help: 'Maximum time in milliseconds for single test execution.',
         valueHelp: 'number',

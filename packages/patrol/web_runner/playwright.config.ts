@@ -1,4 +1,4 @@
-import { defineConfig, PlaywrightTestOptions, ReporterDescription, VideoMode } from "@playwright/test"
+import { defineConfig, PlaywrightTestOptions, ReporterDescription, TraceMode, VideoMode } from "@playwright/test"
 
 const outputDir = process.env.PATROL_TEST_RESULTS_DIR || "./test-results"
 const outputFolder = process.env.PATROL_TEST_REPORT_DIR || "./playwright-report"
@@ -6,6 +6,7 @@ const baseURL = process.env.BASE_URL
 
 const retries = process.env.PATROL_WEB_RETRIES ? parseInt(process.env.PATROL_WEB_RETRIES) : undefined
 const video = process.env.PATROL_WEB_VIDEO ? (process.env.PATROL_WEB_VIDEO as VideoMode) : undefined
+const trace = process.env.PATROL_WEB_TRACE ? (process.env.PATROL_WEB_TRACE as TraceMode) : undefined
 const screenshotEnv = process.env.PATROL_WEB_SCREENSHOT
 // "each-step" is handled by patrolPlatformHandler, not by Playwright's built-in screenshot
 const screenshot =
@@ -48,6 +49,7 @@ export default defineConfig({
     headless,
     video,
     screenshot,
+    trace,
     locale,
     timezoneId,
     colorScheme,
@@ -83,6 +85,8 @@ function mapReporters(reporterEnv: string, outputFolder: string) {
         return ["json", { outputFile: `${outputFolder}/results.json` }] satisfies ReporterDescription
       case "junit":
         return ["junit", { outputFile: `${outputFolder}/results.xml` }] satisfies ReporterDescription
+      case "patrol":
+        return [require.resolve("./reporters/patrolReporter"), { outputFolder }] satisfies ReporterDescription
       case "list":
       case "dot":
       case "line":
