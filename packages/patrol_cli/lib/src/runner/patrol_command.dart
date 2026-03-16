@@ -263,8 +263,8 @@ abstract class PatrolCommand extends Command<int> {
       )
       ..addOption(
         'web-screenshot',
-        help: 'Screenshot capture mode.',
-        valueHelp: 'off | on | only-on-failure',
+        help: 'Screenshot capture mode. Use "each-step" to capture a screenshot after every native action.',
+        valueHelp: 'off | on | only-on-failure | each-step',
       )
       ..addOption(
         'web-timeout',

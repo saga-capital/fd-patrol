@@ -6,9 +6,12 @@ const baseURL = process.env.BASE_URL
 
 const retries = process.env.PATROL_WEB_RETRIES ? parseInt(process.env.PATROL_WEB_RETRIES) : undefined
 const video = process.env.PATROL_WEB_VIDEO ? (process.env.PATROL_WEB_VIDEO as VideoMode) : undefined
-const screenshot = process.env.PATROL_WEB_SCREENSHOT
-  ? (process.env.PATROL_WEB_SCREENSHOT as "off" | "on" | "only-on-failure")
-  : undefined
+const screenshotEnv = process.env.PATROL_WEB_SCREENSHOT
+// "each-step" is handled by patrolPlatformHandler, not by Playwright's built-in screenshot
+const screenshot =
+  screenshotEnv && screenshotEnv !== "each-step"
+    ? (screenshotEnv as "off" | "on" | "only-on-failure")
+    : undefined
 const timeout = process.env.PATROL_WEB_TIMEOUT ? parseInt(process.env.PATROL_WEB_TIMEOUT) : undefined
 const globalTimeout = process.env.PATROL_WEB_GLOBAL_TIMEOUT
   ? parseInt(process.env.PATROL_WEB_GLOBAL_TIMEOUT)

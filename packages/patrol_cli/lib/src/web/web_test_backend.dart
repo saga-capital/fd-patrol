@@ -26,6 +26,10 @@ class WebTestBackend {
     _disposeScope.disposedBy(parentDisposeScope);
   }
 
+  static final _urlPattern = RegExp(r'http://[^/]+:\d+');
+  static final _devToolsPattern =
+      RegExp(r'DevTools listening on ws://[^/]+:(\d+)');
+
   final ProcessManager _processManager;
   final Logger _logger;
   final DisposeScope _disposeScope;
@@ -248,7 +252,7 @@ class WebTestBackend {
           _logger.detail('Flutter: $line');
 
           // Look for the server URL in Flutter output
-          final urlMatch = RegExp(r'http://[^/]+:\d+').firstMatch(line);
+          final urlMatch = _urlPattern.firstMatch(line);
 
           // [CHROME]: DevTools listening on ws://127.0.0.1:38861/devtools/browser/431953d3-ef67-428f-9321-9317256022d0
           if (urlMatch != null && !completer.isCompleted) {
@@ -348,9 +352,7 @@ class WebTestBackend {
           _logger.detail('Flutter: $line');
 
           // [CHROME]: DevTools listening on ws://127.0.0.1:38861/devtools/browser/431953d3-ef67-428f-9321-9317256022d0
-          final urlMatch = RegExp(
-            r'DevTools listening on ws://[^/]+:(\d+)',
-          ).firstMatch(line);
+          final urlMatch = _devToolsPattern.firstMatch(line);
 
           if (urlMatch != null && !completer.isCompleted) {
             final port = urlMatch.group(1)!;
@@ -717,17 +719,13 @@ class WebTestBackend {
   }
 
   Future<bool> _verifyServerReady(String url) async {
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 5);
     try {
       _logger.detail('Verifying server is ready at: $url');
 
-      // Try to make a simple HTTP request to verify server is responding
-      final client = HttpClient()
-        ..connectionTimeout = const Duration(seconds: 5);
-
       final request = await client.getUrl(Uri.parse(url));
       final response = await request.close();
-
-      client.close();
 
       final isReady = response.statusCode == 200;
       _logger.detail(
@@ -738,32 +736,38 @@ class WebTestBackend {
     } catch (err) {
       _logger.detail('Server verification failed: $err');
       return false;
+    } finally {
+      client.close();
     }
   }
 
   Future<void> _ensureNodeDependencies(String webRunnerPath) async {
-    _logger.info('Installing Node.js dependencies...');
+    if (_areNodeDepsUpToDate(webRunnerPath)) {
+      _logger.detail('Node.js dependencies are up to date, skipping install.');
+    } else {
+      _logger.info('Installing Node.js dependencies...');
 
-    final nodeResult = await _processManager.run(
-      ['npm', 'install'],
-      workingDirectory: webRunnerPath,
-      runInShell: true,
-    );
-
-    if (nodeResult.exitCode != 0) {
-      throw ProcessException(
-        'npm',
-        ['install'],
-        'Failed to install Node.js dependencies:\n'
-            'STDOUT: ${nodeResult.stdout}\n'
-            'STDERR: ${nodeResult.stderr}',
-        nodeResult.exitCode,
+      final nodeResult = await _processManager.run(
+        ['npm', 'install'],
+        workingDirectory: webRunnerPath,
+        runInShell: true,
       );
+
+      if (nodeResult.exitCode != 0) {
+        throw ProcessException(
+          'npm',
+          ['install'],
+          'Failed to install Node.js dependencies:\n'
+              'STDOUT: ${nodeResult.stdout}\n'
+              'STDERR: ${nodeResult.stderr}',
+          nodeResult.exitCode,
+        );
+      }
+
+      _logger.info('Node.js dependencies installed successfully.');
     }
 
-    _logger
-      ..info('Node.js dependencies installed successfully.')
-      ..info('Installing Playwright dependencies...');
+    _logger.info('Installing Playwright dependencies...');
     final result = await _processManager.run(
       ['npx', 'playwright', 'install'],
       workingDirectory: webRunnerPath,
@@ -780,5 +784,19 @@ class WebTestBackend {
         result.exitCode,
       );
     }
+  }
+
+  /// Returns true if node_modules is already up to date with package-lock.json.
+  bool _areNodeDepsUpToDate(String webRunnerPath) {
+    final lockFile = File('$webRunnerPath/package-lock.json');
+    final installedLock = File('$webRunnerPath/node_modules/.package-lock.json');
+
+    if (!lockFile.existsSync() || !installedLock.existsSync()) {
+      return false;
+    }
+
+    return installedLock.lastModifiedSync().isAfter(
+      lockFile.lastModifiedSync(),
+    );
   }
 }

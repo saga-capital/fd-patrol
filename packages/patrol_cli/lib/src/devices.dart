@@ -165,15 +165,15 @@ class DeviceFinder {
       flutterKilled = true; // `flutter` has exit code 0 on SIGINT
     });
 
-    var output = '';
-    process.listenStdOut((line) => output += line).disposedBy(_disposeScope);
+    final output = StringBuffer();
+    process.listenStdOut(output.write).disposedBy(_disposeScope);
     final exitCode = await process.exitCode;
     if (exitCode != 0) {
       throwToolExit('`$flutterCommand devices` exited with code $exitCode');
     } else if (flutterKilled) {
       throwToolInterrupted('`$flutterCommand devices` was interrupted');
     } else {
-      return output;
+      return output.toString();
     }
   }
 

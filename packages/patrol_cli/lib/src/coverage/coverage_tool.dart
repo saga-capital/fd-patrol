@@ -162,13 +162,22 @@ class CoverageTool {
         if (!coverageReadyForCollection.isCompleted) {
           coverageReadyForCollection.complete(null);
         }
+      }).catchError((Object error) {
+        if (!coverageReadyForCollection.isCompleted) {
+          coverageReadyForCollection.completeError(error);
+        }
       }),
     );
     unawaited(
       serviceClient.onExtensionEvent
           .where((event) => event.extensionKind == 'waitForCoverageCollection')
           .first
-          .then(coverageReadyForCollection.complete),
+          .then(coverageReadyForCollection.complete)
+          .catchError((Object error) {
+        if (!coverageReadyForCollection.isCompleted) {
+          coverageReadyForCollection.completeError(error);
+        }
+      }),
     );
     final event = await coverageReadyForCollection.future;
     if (event == null) {
@@ -206,19 +215,22 @@ class CoverageTool {
     );
 
     final socket =
-        await io.WebSocket.connect(connectionDetails.webSocketUri.toString())
-          ..add(
-            jsonEncode({
-              'jsonrpc': '2.0',
-              'id': 21,
-              'method': 'ext.patrol.markTestCompleted',
-              'params': {
-                'isolateId': mainIsolateId,
-                'command': 'markTestCompleted',
-              },
-            }),
-          );
-    await socket.close();
+        await io.WebSocket.connect(connectionDetails.webSocketUri.toString());
+    try {
+      socket.add(
+        jsonEncode({
+          'jsonrpc': '2.0',
+          'id': 21,
+          'method': 'ext.patrol.markTestCompleted',
+          'params': {
+            'isolateId': mainIsolateId,
+            'command': 'markTestCompleted',
+          },
+        }),
+      );
+    } finally {
+      await socket.close();
+    }
 
     return coverage.HitMap.parseJson(
       data['coverage'] as List<Map<String, dynamic>>,

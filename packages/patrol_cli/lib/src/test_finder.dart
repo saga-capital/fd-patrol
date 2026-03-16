@@ -97,32 +97,32 @@ class TestFinder {
       return _fs.path.join(_rootDir.path, exclude);
     }).toSet();
 
+    // Pre-compute exclude directory prefixes with trailing separator so we
+    // don't rebuild them for every file in the filter below.
+    final excludeDirPrefixes = absoluteExcludes.map((exclude) {
+      return exclude.endsWith(_fs.path.separator)
+          ? exclude
+          : '$exclude${_fs.path.separator}';
+    }).toList();
+
     return directory
         .listSync(recursive: true, followLinks: false)
         .sorted((a, b) => a.path.compareTo(b.path))
         // Find only test files
         .where((fileSystemEntity) {
-          final hasSuffix = fileSystemEntity.path.endsWith(testFileSuffix);
-          final isFile = _fs.isFileSync(fileSystemEntity.path);
-          return hasSuffix && isFile;
+          return fileSystemEntity is File &&
+              fileSystemEntity.path.endsWith(testFileSuffix);
         })
         // Filter out excluded files and files in excluded directories
         .where((fileSystemEntity) {
           final filePath = fileSystemEntity.path;
 
-          for (final exclude in absoluteExcludes) {
-            // Check if the file exactly matches an excluded file
-            if (filePath == exclude) {
-              return false;
-            }
+          if (absoluteExcludes.contains(filePath)) {
+            return false;
+          }
 
-            // Check if the file is inside an excluded directory
-            // Need to add path separator to avoid matching prefixes
-            // e.g., "patrol_test/permissions" shouldn't match "patrol_test/permissions_other"
-            final excludeWithSeparator = exclude.endsWith(_fs.path.separator)
-                ? exclude
-                : exclude + _fs.path.separator;
-            if (filePath.startsWith(excludeWithSeparator)) {
+          for (final prefix in excludeDirPrefixes) {
+            if (filePath.startsWith(prefix)) {
               return false;
             }
           }
