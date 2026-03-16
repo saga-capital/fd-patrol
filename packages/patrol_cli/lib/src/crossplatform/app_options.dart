@@ -396,6 +396,7 @@ class WebAppOptions {
     this.reportDir,
     this.retries,
     this.video,
+    this.screenshot,
     this.timeout,
     this.workers,
     this.reporter,
@@ -419,6 +420,7 @@ class WebAppOptions {
   final String? reportDir;
   final int? retries;
   final String? video;
+  final String? screenshot;
   final int? timeout;
   final int? workers;
   final String? reporter;

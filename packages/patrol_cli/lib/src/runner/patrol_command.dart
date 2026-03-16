@@ -262,6 +262,11 @@ abstract class PatrolCommand extends Command<int> {
         valueHelp: 'off | on | retain-on-failure | on-first-retry',
       )
       ..addOption(
+        'web-screenshot',
+        help: 'Screenshot capture mode.',
+        valueHelp: 'off | on | only-on-failure',
+      )
+      ..addOption(
         'web-timeout',
         help: 'Maximum time in milliseconds for single test execution.',
         valueHelp: 'number',

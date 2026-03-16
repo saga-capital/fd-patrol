@@ -84,23 +84,9 @@ class WebTestBackend {
         clearTestSteps: clearTestSteps,
       );
     } finally {
-      // Clean up Flutter process gracefully
-      _logger.detail('Stopping Flutter web server...');
-
-      // Try graceful shutdown first
-      flutterProcess.kill();
-
-      // Wait a bit for graceful shutdown
-      try {
-        await flutterProcess.exitCode.timeout(const Duration(seconds: 5));
-      } on TimeoutException {
-        // Timeout occurred, force kill
-        _logger.detail(
-          'Graceful shutdown timed out, force killing Flutter process...',
-        );
-        flutterProcess.kill(ProcessSignal.sigkill);
-        await flutterProcess.exitCode;
-      }
+      // Clean up Flutter process and all its children (e.g. frontend_server_aot)
+      // by killing the entire process group, not just the parent process.
+      await _killProcessTree(flutterProcess);
     }
   }
 
@@ -144,24 +130,72 @@ class WebTestBackend {
         flutterTool.revertInteractiveMode(previousStdinModes);
       }
 
-      // Clean up Flutter process gracefully
-      _logger.detail('Stopping Flutter web server...');
-
-      // Try graceful shutdown first
-      flutterProcess.kill();
-
-      // Wait a bit for graceful shutdown
-      try {
-        await flutterProcess.exitCode.timeout(const Duration(seconds: 5));
-      } on TimeoutException {
-        // Timeout occurred, force kill
-        _logger.detail(
-          'Graceful shutdown timed out, force killing Flutter process...',
-        );
-        flutterProcess.kill(ProcessSignal.sigkill);
-        await flutterProcess.exitCode;
-      }
+      // Clean up Flutter process and all its children (e.g. frontend_server_aot)
+      // by killing the entire process group, not just the parent process.
+      await _killProcessTree(flutterProcess);
     }
+  }
+
+  /// Kills the process and all its descendants to ensure child processes
+  /// (like frontend_server_aot) don't survive as orphans.
+  Future<void> _killProcessTree(Process process) async {
+    _logger.detail('Stopping Flutter web server...');
+
+    final pid = process.pid;
+
+    if (Platform.isWindows) {
+      // On Windows, taskkill /T kills the entire process tree.
+      await Process.run('taskkill', ['/T', '/F', '/PID', '$pid']);
+    } else {
+      // On POSIX, find all descendant PIDs and signal them alongside the
+      // parent. We signal children first so they don't get re-parented to init
+      // before we can reach them.
+      final descendants = await _getDescendantPids(pid);
+      descendants.forEach(Process.killPid);
+      process.kill();
+    }
+
+    try {
+      await process.exitCode.timeout(const Duration(seconds: 5));
+    } on TimeoutException {
+      _logger.detail(
+        'Graceful shutdown timed out, force killing process tree...',
+      );
+      if (Platform.isWindows) {
+        await Process.run('taskkill', ['/T', '/F', '/PID', '$pid']);
+      } else {
+        final descendants = await _getDescendantPids(pid);
+        for (final childPid in descendants) {
+          Process.killPid(childPid, ProcessSignal.sigkill);
+        }
+        process.kill(ProcessSignal.sigkill);
+      }
+      await process.exitCode;
+    }
+  }
+
+  /// Recursively collects all descendant PIDs of [pid] using `pgrep -P`.
+  Future<List<int>> _getDescendantPids(int pid) async {
+    final result = await Process.run('pgrep', ['-P', '$pid']);
+    if (result.exitCode != 0) {
+      return [];
+    }
+
+    final directChildren =
+        (result.stdout as String)
+            .trim()
+            .split('\n')
+            .where((s) => s.isNotEmpty)
+            .map(int.parse)
+            .toList();
+
+    final allDescendants = <int>[];
+    for (final child in directChildren) {
+      allDescendants
+        ..addAll(await _getDescendantPids(child))
+        ..add(child);
+    }
+    return allDescendants;
   }
 
   Future<Process> _startFlutterWebServer(
@@ -365,7 +399,7 @@ class WebTestBackend {
     void Function()? revertInteractiveMode, {
     required Stream<List<int>> stdin,
   }) {
-    final streamSubscription = stdin.listen((event) {
+    final streamSubscription = stdin.listen((event) async {
       final char = String.fromCharCode(event.first);
 
       _logger.detail('Flutter stdin: $char');
@@ -399,6 +433,8 @@ class WebTestBackend {
         revertInteractiveMode?.call();
 
         _logger.success('Quitting process...');
+        final descendants = await _getDescendantPids(flutterProcess.pid);
+        descendants.forEach(Process.killPid);
         flutterProcess.kill();
 
         // Call the uninstall function if provided
@@ -457,6 +493,8 @@ class WebTestBackend {
                   'PATROL_WEB_RETRIES': options.retries.toString(),
                 if (options.video != null)
                   'PATROL_WEB_VIDEO': options.video.toString(),
+                if (options.screenshot != null)
+                  'PATROL_WEB_SCREENSHOT': options.screenshot.toString(),
                 if (options.timeout != null)
                   'PATROL_WEB_TIMEOUT': options.timeout.toString(),
                 if (options.workers != null)
