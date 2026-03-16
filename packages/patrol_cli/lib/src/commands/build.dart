@@ -4,6 +4,7 @@ import 'package:patrol_cli/src/base/logger.dart';
 import 'package:patrol_cli/src/commands/build_android.dart';
 import 'package:patrol_cli/src/commands/build_ios.dart';
 import 'package:patrol_cli/src/commands/build_macos.dart';
+import 'package:patrol_cli/src/commands/build_web.dart';
 import 'package:patrol_cli/src/compatibility_checker/compatibility_checker.dart';
 import 'package:patrol_cli/src/dart_defines_reader.dart';
 import 'package:patrol_cli/src/ios/ios_test_backend.dart';
@@ -12,6 +13,7 @@ import 'package:patrol_cli/src/pubspec_reader.dart';
 import 'package:patrol_cli/src/runner/patrol_command.dart';
 import 'package:patrol_cli/src/test_bundler.dart';
 import 'package:patrol_cli/src/test_finder.dart';
+import 'package:patrol_cli/src/web/web_test_backend.dart';
 
 class BuildCommand extends PatrolCommand {
   BuildCommand({
@@ -22,6 +24,7 @@ class BuildCommand extends PatrolCommand {
     required AndroidTestBackend androidTestBackend,
     required IOSTestBackend iosTestBackend,
     required MacOSTestBackend macosTestBackend,
+    required WebTestBackend webTestBackend,
     required Analytics analytics,
     required CompatibilityChecker compatibilityChecker,
     required Logger logger,
@@ -57,6 +60,18 @@ class BuildCommand extends PatrolCommand {
         dartDefinesReader: dartDefinesReader,
         pubspecReader: pubspecReader,
         macosTestBackend: macosTestBackend,
+        compatibilityChecker: compatibilityChecker,
+        analytics: analytics,
+        logger: logger,
+      ),
+    );
+    addSubcommand(
+      BuildWebCommand(
+        testFinderFactory: testFinderFactory,
+        testBundler: testBundler,
+        dartDefinesReader: dartDefinesReader,
+        pubspecReader: pubspecReader,
+        webTestBackend: webTestBackend,
         compatibilityChecker: compatibilityChecker,
         analytics: analytics,
         logger: logger,

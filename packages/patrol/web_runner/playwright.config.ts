@@ -10,9 +10,7 @@ const trace = process.env.PATROL_WEB_TRACE ? (process.env.PATROL_WEB_TRACE as Tr
 const screenshotEnv = process.env.PATROL_WEB_SCREENSHOT
 // "each-step" is handled by patrolPlatformHandler, not by Playwright's built-in screenshot
 const screenshot =
-  screenshotEnv && screenshotEnv !== "each-step"
-    ? (screenshotEnv as "off" | "on" | "only-on-failure")
-    : undefined
+  screenshotEnv && screenshotEnv !== "each-step" ? (screenshotEnv as "off" | "on" | "only-on-failure") : undefined
 const timeout = process.env.PATROL_WEB_TIMEOUT ? parseInt(process.env.PATROL_WEB_TIMEOUT) : undefined
 const globalTimeout = process.env.PATROL_WEB_GLOBAL_TIMEOUT
   ? parseInt(process.env.PATROL_WEB_GLOBAL_TIMEOUT)
@@ -71,7 +69,18 @@ export default defineConfig({
 })
 
 function mapReporters(reporterEnv: string, outputFolder: string) {
-  const reporterNames: unknown = JSON.parse(reporterEnv)
+  let reporterNames: unknown
+
+  try {
+    reporterNames = JSON.parse(reporterEnv)
+  } catch {
+    // Handle non-JSON input like "[patrol, html]" or "patrol, html"
+    const cleaned = reporterEnv.replace(/^\[|\]$/g, "")
+    reporterNames = cleaned
+      .split(",")
+      .map(s => s.trim())
+      .filter(Boolean)
+  }
 
   if (!Array.isArray(reporterNames)) {
     throw new Error("PATROL_WEB_REPORTER must be a JSON array of reporter names")
