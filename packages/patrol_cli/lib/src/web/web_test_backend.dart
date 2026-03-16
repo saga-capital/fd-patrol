@@ -62,6 +62,18 @@ class WebTestBackend {
     bool hideTestSteps = false,
     bool clearTestSteps = false,
   }) async {
+    if (options.baseUrl != null) {
+      _logger.info('Using provided base URL: ${options.baseUrl}');
+      await _runPlaywrightTests(
+        options.baseUrl!,
+        options,
+        showFlutterLogs: showFlutterLogs,
+        hideTestSteps: hideTestSteps,
+        clearTestSteps: clearTestSteps,
+      );
+      return;
+    }
+
     _logger
       ..detail('Starting web test execution...')
       ..info('Building Flutter web app...');

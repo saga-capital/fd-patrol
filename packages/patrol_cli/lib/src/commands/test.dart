@@ -318,6 +318,7 @@ See https://github.com/leancodepl/patrol/issues/1316 to learn more.
       webPort: intArg('web-port'),
       serverTimeout: intArg('web-server-timeout'),
       browserArgs: stringArg('web-browser-args'),
+      baseUrl: stringArg('web-base-url'),
     );
 
     // No need to build web app for testing. It's done in the execute method.

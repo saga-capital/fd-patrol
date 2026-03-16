@@ -352,6 +352,14 @@ abstract class PatrolCommand extends Command<int> {
         'web-browser-args',
         help: 'Custom browser launch arguments. JSON array of strings.',
         valueHelp: '\'["--no-sandbox", "--disable-gpu"]\'',
+      )
+      ..addOption(
+        'web-base-url',
+        help:
+            'Base URL of an already-running Flutter web server. '
+            'When provided, patrol skips building and starting the Flutter web server '
+            'and runs Playwright tests directly against this URL.',
+        valueHelp: 'http://localhost:8080',
       );
   }
 

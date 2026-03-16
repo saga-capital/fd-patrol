@@ -406,6 +406,7 @@ class WebAppOptions {
     this.webPort,
     this.serverTimeout,
     this.browserArgs,
+    this.baseUrl,
   });
 
   final FlutterAppOptions flutter;
@@ -433,6 +434,10 @@ class WebAppOptions {
   /// Timeout in seconds for the web server to start.
   /// Defaults to 120 seconds (2 minutes) if not specified.
   final int? serverTimeout;
+
+  /// Base URL of an already-running Flutter web server.
+  /// When set, patrol skips building and starting the server.
+  final String? baseUrl;
 
   /// Translates these options into a proper flutter build invocation.
   List<String> toFlutterBuildInvocation() {
