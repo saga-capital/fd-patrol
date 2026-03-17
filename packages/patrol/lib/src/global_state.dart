@@ -67,6 +67,12 @@ bool get isCurrentTestPassing {
   return Invoker.current!.liveTest.state.result.isPassing;
 }
 
+/// Returns the errors from the current test, if any.
+/// Each error has `.error` and `.stackTrace` properties.
+List<dynamic> get currentTestErrors {
+  return Invoker.current!.liveTest.errors;
+}
+
 /// Returns whether the current test is the last test in its immediate group.
 bool get isCurrentTestLastInGroup {
   final currentTest = Invoker.current!.liveTest;

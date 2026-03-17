@@ -408,6 +408,8 @@ class WebAppOptions {
     this.serverTimeout,
     this.browserArgs,
     this.baseUrl,
+    this.optimizationLevel,
+    this.sourceMaps,
   });
 
   final FlutterAppOptions flutter;
@@ -441,6 +443,13 @@ class WebAppOptions {
   /// When set, patrol skips building and starting the server.
   final String? baseUrl;
 
+  /// dart2js optimization level (0-4). Lower values preserve more debug info.
+  /// O0: max debug, O1: keeps print()+asserts, O4: strips print().
+  final String? optimizationLevel;
+
+  /// Whether to generate source maps for debugging stack traces.
+  final bool? sourceMaps;
+
   /// Translates these options into a proper flutter build invocation.
   List<String> toFlutterBuildInvocation() {
     final cmd = [
@@ -450,6 +459,9 @@ class WebAppOptions {
       'web',
       '--target=${flutter.target}',
       '--${flutter.buildMode.name}',
+      if (optimizationLevel != null) '-O$optimizationLevel',
+      if (sourceMaps == true) '--source-maps',
+      if (flutter.noTreeShakeIcons) '--no-tree-shake-icons',
       // Note: --flavor is not supported for web, so we don't include it
       ...flutter.dartDefines.entries.map(
         (e) => '--dart-define=${e.key}=${e.value}',

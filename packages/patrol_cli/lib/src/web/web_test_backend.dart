@@ -230,6 +230,9 @@ class WebTestBackend {
       if (options.webPort != null) '--web-port=${options.webPort}',
       '--target=${options.flutter.target}',
       '--${options.flutter.buildMode.name}',
+      if (options.optimizationLevel != null)
+        '-O${options.optimizationLevel}',
+      if (options.sourceMaps == true) '--source-maps',
       // Note: --flavor is not supported for web, so we don't include it
       ...options.flutter.dartDefines.entries.map(
         (e) => '--dart-define=${e.key}=${e.value}',

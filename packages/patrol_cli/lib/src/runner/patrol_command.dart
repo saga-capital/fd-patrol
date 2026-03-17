@@ -73,6 +73,19 @@ abstract class PatrolCommand extends Command<int> {
         'no-tree-shake-icons',
         help: 'Disable tree shaking of icons when building the app.',
         negatable: false,
+      )
+      ..addOption(
+        'optimization-level',
+        abbr: 'O',
+        help:
+            'dart2js optimization level. Lower values preserve more debug info.\n'
+            'O0: max debug, O1: keeps print()+asserts, O4: strips print().',
+        allowed: ['0', '1', '2', '3', '4'],
+      )
+      ..addFlag(
+        'source-maps',
+        help: 'Generate source maps for debugging stack traces.',
+        negatable: true,
       );
   }
 

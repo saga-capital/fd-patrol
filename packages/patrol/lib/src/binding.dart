@@ -103,12 +103,14 @@ class PatrolBinding extends LiveTestWidgetsFlutterBinding {
           'tearDown(): test "$testName" in group "$_currentDartTest", passed: $passed',
         );
 
+        final details = _testResults[_currentDartTest!] is Failure
+            ? (_testResults[_currentDartTest!] as Failure?)?.details
+            : null;
+
         await patrolAppService.markDartTestAsCompleted(
           dartFileName: _currentDartTest!,
           passed: passed,
-          details: _testResults[_currentDartTest!] is Failure
-              ? (_testResults[_currentDartTest!] as Failure?)?.details
-              : null,
+          details: details,
         );
       } else {
         logger(
@@ -185,6 +187,27 @@ class PatrolBinding extends LiveTestWidgetsFlutterBinding {
   void initInstances() {
     super.initInstances();
     _instance = this;
+
+    // In profile/release mode, show a red error widget (like debug mode)
+    // instead of the default gray box. This makes rendering errors visible
+    // in screenshots and video recordings.
+    if (_failOnRenderError) {
+      ErrorWidget.builder = (FlutterErrorDetails details) {
+        return Container(
+          color: const Color(0xFFE53935),
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            details.exceptionAsString(),
+            style: const TextStyle(
+              color: Color(0xFFFFFFFF),
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              decoration: TextDecoration.none,
+            ),
+          ),
+        );
+      };
+    }
   }
 
   @override
@@ -222,11 +245,28 @@ class PatrolBinding extends LiveTestWidgetsFlutterBinding {
     _testResults[description] ??= _success;
   }
 
+  /// Whether Flutter rendering errors (overflow, layout issues, etc.)
+  /// should fail the test immediately.
+  ///
+  /// Controlled via `--dart-define=PATROL_FAIL_ON_RENDER_ERROR=true`.
+  /// When not set, defaults to true in profile/release mode (dart2js builds)
+  /// and false in debug mode.
+  static const _failOnRenderError = bool.fromEnvironment(
+    'PATROL_FAIL_ON_RENDER_ERROR',
+    defaultValue: !kDebugMode,
+  );
+
+  /// First Flutter rendering error caught during the current test body.
+  /// Used to fail the test after pump returns, since throwing from within
+  /// FlutterError.onError doesn't interrupt the rendering pipeline.
+  String? _pendingRenderError;
+
   /// Wraps the test body with a function that gathers exceptions and reports
   /// them to the native side of Patrol.
   Future<void> _wrapTestBodyWithExceptionGatherer(
     Future<void> Function() testBody,
   ) async {
+    _pendingRenderError = null;
     final previousOnError = FlutterError.onError;
     FlutterError.onError = (details) {
       if (_currentDartTest case final testName?) {
@@ -234,9 +274,21 @@ class PatrolBinding extends LiveTestWidgetsFlutterBinding {
           Failure(:final details?) => FlutterErrorDetails(exception: details),
           _ => null,
         };
-        final detailsAsString = (kReleaseMode && current_platform.isIOS)
-            ? '${details.exceptionAsString()}\n${details.stack}'
-            : details.toString();
+
+        // Always include exception message + stack trace for maximum debug info.
+        // details.toString() may omit the stack in profile/release mode.
+        final buffer = StringBuffer()
+          ..writeln(details.exceptionAsString());
+        if (details.stack != null) {
+          buffer.writeln(details.stack);
+        }
+        if (details.context != null) {
+          buffer.writeln('Context: ${details.context}');
+        }
+        if (details.library != null) {
+          buffer.writeln('Library: ${details.library}');
+        }
+        final detailsAsString = buffer.toString();
 
         _testResults[testName] = Failure(
           testName,
@@ -244,12 +296,48 @@ class PatrolBinding extends LiveTestWidgetsFlutterBinding {
         );
 
         previousOnError?.call(details);
+
+        // Record the first render error for later — we can't throw from here
+        // because FlutterError.onError runs in the rendering pipeline's error
+        // zone, not in the test body's execution context.
+        if (_failOnRenderError) {
+          _pendingRenderError ??= detailsAsString;
+        }
       }
     };
 
-    await testBody();
+    try {
+      await testBody();
+    } catch (error, stackTrace) {
+      // Captures TestFailure from expect(), fail(), and any other exceptions.
+      // FlutterError.onError only catches Flutter rendering errors separately.
+      if (_currentDartTest case final testName?) {
+        final existing = _testResults[testName];
+        final newDetails = '$error\n$stackTrace';
+        if (existing is Failure && (existing.details?.isNotEmpty ?? false)) {
+          // Append to existing FlutterError details
+          _testResults[testName] = Failure(
+            testName,
+            '${existing.details}\n\n$newDetails',
+          );
+        } else {
+          _testResults[testName] = Failure(testName, newDetails);
+        }
+      }
+      rethrow;
+    } finally {
+      FlutterError.onError = previousOnError;
+    }
 
-    FlutterError.onError = previousOnError;
+    // Check for pending render errors AFTER the test body completes.
+    // This catches cases where FlutterError.onError fired during pump()
+    // but the error was swallowed by Flutter's error zone.
+    if (_pendingRenderError != null) {
+      fail(
+        'Flutter rendering error (fatal in profile/release mode):\n'
+        '$_pendingRenderError',
+      );
+    }
   }
 
   @override
@@ -307,10 +395,23 @@ class PatrolBinding extends LiveTestWidgetsFlutterBinding {
 
   @override
   void reportExceptionNoticed(FlutterErrorDetails exception) {
-    // This override is copied from IntegrationTestWidgetsFlutterBinding. It may
-    // be not needed.
-    //
-    // See: https://github.com/flutter/flutter/issues/81534
+    // In profile/release mode, report the exception to the test framework
+    // so that pumpAndSettle stops pumping and the test fails.
+    // Without this, rendering errors are silently swallowed and pumpAndSettle
+    // hangs forever trying to rebuild the broken widget.
+    if (_failOnRenderError) {
+      reportTestException(
+        FlutterErrorDetails(
+          exception: exception.exception,
+          stack: exception.stack,
+          library: exception.library,
+          context: ErrorDescription(
+            'Flutter rendering error (fatal in profile/release mode)',
+          ),
+        ),
+        _currentDartTest ?? 'unknown test',
+      );
+    }
   }
 }
 

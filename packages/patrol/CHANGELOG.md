@@ -1,6 +1,16 @@
 ## Unreleased
 
 - Reflect failed tests in Playwright report. (#2970)
+- Support dart2js static builds for web testing (`flutter build web --profile`).
+- Fix race condition: move `exposePatrolPlatformHandler` before `page.goto()` for dart2js compatibility.
+- Capture browser console logs with `mm:ss.SSS` timestamps and attach to test results.
+- Add source map deobfuscation for dart2js stack traces (resolves `main.dart.js` offsets to Dart source paths).
+- Capture `TestFailure` exceptions (from `expect()`) in `_wrapTestBodyWithExceptionGatherer` for proper error details in reports.
+- Include full stack trace from `FlutterError.onError` in test failure details.
+- Make Flutter rendering errors fatal in profile/release mode via `PATROL_FAIL_ON_RENDER_ERROR` dart-define (defaults to true in non-debug builds).
+- Show red error widget in profile/release mode instead of gray box for rendering errors.
+- Add Console tab to patrol reporter with color-coded, timestamped log lines.
+- Improve error banner in patrol reporter: show clean error summary with collapsible stack trace.
 
 ## 4.3.0
 

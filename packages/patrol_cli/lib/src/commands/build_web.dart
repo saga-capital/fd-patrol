@@ -167,7 +167,16 @@ class BuildWebCommand extends PatrolCommand {
       buildNumber: buildNumber,
     );
 
-    final webOpts = WebAppOptions(flutter: flutterOpts);
+    final optimizationLevel = stringArg('optimization-level');
+    final sourceMaps = argResults!.wasParsed('source-maps')
+        ? boolArg('source-maps')
+        : null;
+
+    final webOpts = WebAppOptions(
+      flutter: flutterOpts,
+      optimizationLevel: optimizationLevel,
+      sourceMaps: sourceMaps,
+    );
 
     try {
       await _webTestBackend.build(webOpts);

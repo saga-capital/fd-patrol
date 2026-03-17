@@ -1,6 +1,9 @@
 ## Unreleased
 
 - Reflect failed tests in Playwright report. (#2970)
+- Add `--optimization-level` / `-O` flag for web builds to control dart2js optimization (0-4). Lower levels preserve `print()` and assertions.
+- Add `--source-maps` flag for web builds to generate source maps for stack trace deobfuscation.
+- Forward `-O` and `--source-maps` flags to both `flutter build web` and `flutter run -d web-server`.
 
 ## 4.2.0
 

@@ -22,6 +22,7 @@ interface TestData {
   errorStack?: string
   steps: StepData[]
   videoFile?: string
+  consoleLogs?: string
 }
 
 class PatrolReporter implements Reporter {
@@ -56,6 +57,19 @@ class PatrolReporter implements Reporter {
       }
     }
 
+    // Extract console logs from attachments
+    let consoleLogs: string | undefined
+    const consoleAttachment = result.attachments.find(a => a.name === "console-log" && a.contentType === "text/plain")
+    if (consoleAttachment?.body) {
+      consoleLogs = consoleAttachment.body.toString("utf-8")
+    } else if (consoleAttachment?.path) {
+      try {
+        consoleLogs = fs.readFileSync(consoleAttachment.path, "utf-8")
+      } catch {
+        // noop
+      }
+    }
+
     this.tests.push({
       name: test.title,
       slug: testSlug,
@@ -65,6 +79,7 @@ class PatrolReporter implements Reporter {
       errorStack: result.error?.stack,
       steps,
       videoFile,
+      consoleLogs,
     })
   }
 
@@ -265,6 +280,18 @@ class PatrolReporter implements Reporter {
   .video-container video { max-width: 100%; max-height: 100%; border-radius: 6px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
   .video-container .placeholder { color: #555; font-size: 14px; padding-top: 30vh; }
 
+  /* Console panel */
+  .console-panel { padding: 12px; background: #0d0d1a; height: calc(100vh - 180px); overflow-y: auto; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; line-height: 1.6; }
+  .console-toolbar { padding: 6px 12px; background: #16213e; border-bottom: 1px solid #2a2a4a; display: flex; gap: 8px; align-items: center; }
+  .console-toolbar label { font-size: 12px; color: #888; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+  .console-toolbar input[type="checkbox"] { cursor: pointer; }
+  .console-line { padding: 1px 12px; border-bottom: 1px solid #1a1a2e; white-space: pre-wrap; word-break: break-all; }
+  .console-line.log { color: #ccc; }
+  .console-line.error, .console-line.page-error { color: #ff6b6b; background: #1a0000; }
+  .console-line.warning { color: #ffb347; }
+  .console-line.patrol-log { color: #6c63ff; }
+  .console-line.debug { color: #888; }
+
   @media (max-width: 768px) {
     .panels { flex-direction: column; height: auto; }
     .step-list { width: 100%; min-width: auto; max-height: 40vh; }
@@ -280,21 +307,22 @@ class PatrolReporter implements Reporter {
   <span class="duration">${this.fmtDuration(testData.duration)}</span>
 </div>
 
-${
-  testData.error
-    ? `<details class="error-banner" open>
-  <summary>Error: ${this.esc(testData.error.split("\\n")[0])}</summary>
-  <pre>${this.esc(testData.errorStack || testData.error)}</pre>
-</details>`
-    : ""
-}
+${this.renderErrorBanner(testData)}
 
 <div id="tabs-bar" class="tabs">
   <div class="tab active" data-tab="steps-content">Steps (${testData.steps.length})</div>
+  ${testData.consoleLogs ? '<div class="tab" data-tab="console-content">Console</div>' : ""}
   ${testData.videoFile ? '<div class="tab" data-tab="video-content">Video</div>' : ""}
 </div>
 
 <div id="steps-content" class="tab-content active"></div>
+${
+  testData.consoleLogs
+    ? `<div id="console-content" class="tab-content">
+  <div class="console-panel" id="console-panel"></div>
+</div>`
+    : ""
+}
 ${
   testData.videoFile
     ? `<div id="video-content" class="tab-content">
@@ -435,8 +463,66 @@ function escapeHtml(str) {
   d.textContent = str;
   return d.innerHTML;
 }
+
+// Console panel
+if (test.consoleLogs) {
+  const panel = document.getElementById('console-panel');
+  if (panel) {
+    const lines = test.consoleLogs.split('\\n');
+    lines.forEach(line => {
+      const div = document.createElement('div');
+      div.className = 'console-line ' + classifyLine(line);
+      div.textContent = line;
+      panel.appendChild(div);
+    });
+  }
+}
+
+function classifyLine(line) {
+  // Lines may start with a timestamp like "00:01.234 [type] ..."
+  var rest = line.replace(/^\\d{2}:\\d{2}\\.\\d{3}\\s*/, '');
+  if (rest.startsWith('[PAGE_ERROR]')) return 'page-error';
+  if (rest.startsWith('[error]')) return 'error';
+  if (rest.startsWith('[warning]')) return 'warning';
+  if (rest.includes('PATROL_LOG')) return 'patrol-log';
+  if (rest.startsWith('[debug]')) return 'debug';
+  return 'log';
+}
 </script>
 </body></html>`
+  }
+
+  private renderErrorBanner(testData: TestData): string {
+    if (!testData.error) return ""
+
+    // Parse the error: first non-empty line is the message, rest is stack trace
+    const rawError = testData.error.replace(/^Error:\s*/i, "")
+    const lines = rawError.split("\n")
+
+    // Find the error message (first non-empty line) and stack trace (lines starting with "at" or whitespace+"at")
+    let message = ""
+    const stackLines: string[] = []
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (!message && trimmed) {
+        message = trimmed
+      } else if (trimmed.startsWith("at ") || trimmed.startsWith("at\t")) {
+        stackLines.push(line)
+      } else if (trimmed.startsWith("Context:") || trimmed.startsWith("Library:")) {
+        stackLines.push(line)
+      }
+    }
+
+    // Keep only the first 10 stack frames
+    const visibleStack = stackLines.slice(0, 10)
+    const hiddenCount = stackLines.length - visibleStack.length
+
+    const stackText = visibleStack.join("\n") + (hiddenCount > 0 ? `\n    ... ${hiddenCount} more frames` : "")
+
+    return `<details class="error-banner" open>
+  <summary>${this.esc(message)}</summary>
+  <pre>${this.esc(stackText)}</pre>
+</details>`
   }
 
   private esc(s: string): string {

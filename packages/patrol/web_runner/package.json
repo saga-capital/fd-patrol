@@ -20,6 +20,7 @@
     "@leancodepl/eslint-config": "9.7.0",
     "@leancodepl/prettier-config": "9.7.0",
     "@types/node": "24.3.1",
+    "source-map": "^0.7.6",
     "typescript": "5.9.3"
   }
 }
