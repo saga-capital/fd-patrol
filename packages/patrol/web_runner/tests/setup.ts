@@ -8,7 +8,13 @@ async function setup(config: FullConfig) {
     ? JSON.parse(process.env.PATROL_WEB_BROWSER_ARGS)
     : undefined
 
+  // Respect the headless setting so CI (always headless) works without xvfb.
+  // PATROL_WEB_HEADLESS is read by playwright.config.ts for test workers but
+  // setup.ts launches its own browser for discovery, so it must read it too.
+  const headless = process.env.PATROL_WEB_HEADLESS !== "false"
+
   const browser = await chromium.launch({
+    headless,
     args: browserArgs,
   })
   
