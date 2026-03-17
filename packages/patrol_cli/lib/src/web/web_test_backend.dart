@@ -27,8 +27,9 @@ class WebTestBackend {
   }
 
   static final _urlPattern = RegExp(r'http://[^/]+:\d+');
-  static final _devToolsPattern =
-      RegExp(r'DevTools listening on ws://[^/]+:(\d+)');
+  static final _devToolsPattern = RegExp(
+    r'DevTools listening on ws://[^/]+:(\d+)',
+  );
 
   final ProcessManager _processManager;
   final Logger _logger;
@@ -197,13 +198,12 @@ class WebTestBackend {
       return [];
     }
 
-    final directChildren =
-        (result.stdout as String)
-            .trim()
-            .split('\n')
-            .where((s) => s.isNotEmpty)
-            .map(int.parse)
-            .toList();
+    final directChildren = (result.stdout as String)
+        .trim()
+        .split('\n')
+        .where((s) => s.isNotEmpty)
+        .map(int.parse)
+        .toList();
 
     final allDescendants = <int>[];
     for (final child in directChildren) {
@@ -733,8 +733,7 @@ class WebTestBackend {
   }
 
   Future<bool> _verifyServerReady(String url) async {
-    final client = HttpClient()
-      ..connectionTimeout = const Duration(seconds: 5);
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 5);
     try {
       _logger.detail('Verifying server is ready at: $url');
 
@@ -803,7 +802,9 @@ class WebTestBackend {
   /// Returns true if node_modules is already up to date with package-lock.json.
   bool _areNodeDepsUpToDate(String webRunnerPath) {
     final lockFile = File('$webRunnerPath/package-lock.json');
-    final installedLock = File('$webRunnerPath/node_modules/.package-lock.json');
+    final installedLock = File(
+      '$webRunnerPath/node_modules/.package-lock.json',
+    );
 
     if (!lockFile.existsSync() || !installedLock.existsSync()) {
       return false;

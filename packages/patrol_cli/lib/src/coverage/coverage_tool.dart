@@ -158,15 +158,17 @@ class CoverageTool {
 
     await serviceClient.streamListen('Extension');
     unawaited(
-      serviceClient.onDone.then((_) {
-        if (!coverageReadyForCollection.isCompleted) {
-          coverageReadyForCollection.complete(null);
-        }
-      }).catchError((Object error) {
-        if (!coverageReadyForCollection.isCompleted) {
-          coverageReadyForCollection.completeError(error);
-        }
-      }),
+      serviceClient.onDone
+          .then((_) {
+            if (!coverageReadyForCollection.isCompleted) {
+              coverageReadyForCollection.complete(null);
+            }
+          })
+          .catchError((Object error) {
+            if (!coverageReadyForCollection.isCompleted) {
+              coverageReadyForCollection.completeError(error);
+            }
+          }),
     );
     unawaited(
       serviceClient.onExtensionEvent
@@ -174,10 +176,10 @@ class CoverageTool {
           .first
           .then(coverageReadyForCollection.complete)
           .catchError((Object error) {
-        if (!coverageReadyForCollection.isCompleted) {
-          coverageReadyForCollection.completeError(error);
-        }
-      }),
+            if (!coverageReadyForCollection.isCompleted) {
+              coverageReadyForCollection.completeError(error);
+            }
+          }),
     );
     final event = await coverageReadyForCollection.future;
     if (event == null) {
@@ -214,8 +216,9 @@ class CoverageTool {
       packages,
     );
 
-    final socket =
-        await io.WebSocket.connect(connectionDetails.webSocketUri.toString());
+    final socket = await io.WebSocket.connect(
+      connectionDetails.webSocketUri.toString(),
+    );
     try {
       socket.add(
         jsonEncode({

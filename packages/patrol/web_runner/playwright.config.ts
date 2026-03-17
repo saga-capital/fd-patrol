@@ -95,7 +95,7 @@ function mapReporters(reporterEnv: string, outputFolder: string) {
       case "junit":
         return ["junit", { outputFile: `${outputFolder}/results.xml` }] satisfies ReporterDescription
       case "patrol":
-        return [require.resolve("./reporters/patrolReporter"), { outputFolder }] satisfies ReporterDescription
+        return [require.resolve("./reporters/patrolReporter.ts"), { outputFolder }] satisfies ReporterDescription
       case "list":
       case "dot":
       case "line":

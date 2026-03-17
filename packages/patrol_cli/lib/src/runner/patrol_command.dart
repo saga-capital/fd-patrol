@@ -263,12 +263,14 @@ abstract class PatrolCommand extends Command<int> {
       )
       ..addOption(
         'web-screenshot',
-        help: 'Screenshot capture mode. Use "each-step" to capture a screenshot after every native action.',
+        help:
+            'Screenshot capture mode. Use "each-step" to capture a screenshot after every native action.',
         valueHelp: 'off | on | only-on-failure | each-step',
       )
       ..addOption(
         'web-trace',
-        help: 'Trace recording mode. Enables the Playwright Trace Viewer timeline.',
+        help:
+            'Trace recording mode. Enables the Playwright Trace Viewer timeline.',
         valueHelp: 'off | on | retain-on-failure | on-first-retry',
       )
       ..addOption(

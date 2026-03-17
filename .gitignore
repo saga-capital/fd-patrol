@@ -12,3 +12,6 @@
 /pubspec.lock
 pubspec_overrides.yaml
 custom_lint.log
+
+# FVM Version Cache
+.fvm/
