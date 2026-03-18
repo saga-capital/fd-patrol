@@ -64,18 +64,38 @@ class PatrolLogReader {
   void stopTimer() => _stopwatch.stop();
 
   /// Returns the total number of tests.
-  int get totalTests => _singleEntries.length;
+  /// Falls back to test framework counts when PATROL_LOG entries are incomplete.
+  int get totalTests {
+    final patrolTotal = _singleEntries.length;
+    final frameworkTotal = _frameworkPassed + _frameworkFailed;
+    return patrolTotal > 0 ? patrolTotal : frameworkTotal;
+  }
 
   /// Returns the number of tests that passed.
-  int get successfulTests =>
-      _singleEntries.where((e) => e.status == TestEntryStatus.success).length;
+  /// Falls back to test framework counts when PATROL_LOG entries are incomplete.
+  int get successfulTests {
+    final patrolSuccess =
+        _singleEntries.where((e) => e.status == TestEntryStatus.success).length;
+    if (patrolSuccess > 0) return patrolSuccess;
+    // Fallback: use framework passed count (excludes patrol_test_explorer)
+    final frameworkTotal = _frameworkPassed + _frameworkFailed;
+    if (frameworkTotal > 0 && totalTests > 0) {
+      return totalTests - _frameworkFailed;
+    }
+    return 0;
+  }
 
   /// Return list of failed tests.
   List<PatrolSingleTestEntry> get failedTests =>
       _singleEntries.where((e) => e.status == TestEntryStatus.failure).toList();
 
   /// Returns the number of failed tests.
-  int get failedTestsCount => failedTests.length;
+  /// Falls back to test framework counts when PATROL_LOG entries are incomplete.
+  int get failedTestsCount {
+    final patrolFailed = failedTests.length;
+    if (patrolFailed > 0) return patrolFailed;
+    return _frameworkFailed;
+  }
 
   /// Returns the number of skipped tests.
   int get skippedTests =>
@@ -89,12 +109,27 @@ class PatrolLogReader {
   // Pattern for Flutter test framework output: "MM:SS +N -N: message" or "MM:SS +N: message"
   static final _testFrameworkPattern = RegExp(r'(\d+:\d+ \+\d+( -\d+)?: .+)');
 
+  // Pattern to extract passed/failed counts from test framework output
+  static final _testCountPattern = RegExp(r'\+(\d+)(?: -(\d+))?:');
+
+  /// Tracks the latest passed/failed counts from the test framework output.
+  /// Used as fallback when PATROL_LOG entries are incomplete (e.g. web/Playwright).
+  int _frameworkPassed = 0;
+  int _frameworkFailed = 0;
+
   /// Parse the line from the process output.
   void parse(String line) {
     try {
       if (line.contains('PATROL_LOG')) {
         _parsePatrolLog(line);
       } else if (_testFrameworkPattern.hasMatch(line)) {
+        // Track passed/failed counts from test framework output as fallback.
+        final countMatch = _testCountPattern.firstMatch(line);
+        if (countMatch != null) {
+          _frameworkPassed = int.parse(countMatch.group(1)!);
+          _frameworkFailed = int.tryParse(countMatch.group(2) ?? '') ?? 0;
+        }
+
         if (hideTestLifecycle) {
           return;
         }

@@ -30,8 +30,9 @@ export const patrolTest = base.extend({
       consoleLogs.push(entry)
 
       if (text.startsWith("PATROL_LOG")) {
-        // eslint-disable-next-line no-console
-        console.log(text)
+        // Write directly to stdout to bypass Playwright's reporter
+        // which truncates long console.log messages
+        process.stdout.write(text + "\n")
         return
       }
 
