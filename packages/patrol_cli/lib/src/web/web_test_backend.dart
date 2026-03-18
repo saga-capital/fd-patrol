@@ -544,6 +544,10 @@ class WebTestBackend {
                   'PATROL_WEB_HEADLESS': options.headless.toString(),
                 if (options.browserArgs != null)
                   'PATROL_WEB_BROWSER_ARGS': options.browserArgs.toString(),
+                if (options.targets != null && options.targets!.isNotEmpty)
+                  'PATROL_WEB_TARGETS': options.targets!
+                      .map((t) => t.split('/').last.replaceAll('.dart', ''))
+                      .join(','),
                 ...Platform.environment,
               },
               runInShell: true,

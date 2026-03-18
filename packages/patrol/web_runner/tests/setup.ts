@@ -51,7 +51,16 @@ async function setup(config: FullConfig) {
       setupPageErrorPromise,
     ])) as { group: DartTestEntry }
 
-    const patrolTests = mapEntry(testEntriesResponse.group)
+    let patrolTests = mapEntry(testEntriesResponse.group)
+
+    // Filter tests by target file stems when --target is used with --web-base-url
+    const targetStems = process.env.PATROL_WEB_TARGETS?.split(",").filter(Boolean)
+    if (targetStems && targetStems.length > 0) {
+      patrolTests = patrolTests.filter(test =>
+        targetStems.some(stem => test.name.startsWith(stem)),
+      )
+    }
+
     process.env.PATROL_TESTS = JSON.stringify(patrolTests)
   } finally {
     await browser.close()

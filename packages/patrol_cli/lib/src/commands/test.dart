@@ -324,6 +324,7 @@ See https://github.com/leancodepl/patrol/issues/1316 to learn more.
       sourceMaps: argResults!.wasParsed('source-maps')
           ? boolArg('source-maps')
           : null,
+      targets: target.isNotEmpty ? targets : null,
     );
 
     // No need to build web app for testing. It's done in the execute method.

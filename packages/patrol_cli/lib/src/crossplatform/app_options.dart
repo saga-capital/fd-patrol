@@ -410,6 +410,7 @@ class WebAppOptions {
     this.baseUrl,
     this.optimizationLevel,
     this.sourceMaps,
+    this.targets,
   });
 
   final FlutterAppOptions flutter;
@@ -449,6 +450,10 @@ class WebAppOptions {
 
   /// Whether to generate source maps for debugging stack traces.
   final bool? sourceMaps;
+
+  /// Test target file paths for filtering when using --web-base-url.
+  /// File stems are extracted and passed to Playwright to filter discovered tests.
+  final List<String>? targets;
 
   /// Translates these options into a proper flutter build invocation.
   List<String> toFlutterBuildInvocation() {
