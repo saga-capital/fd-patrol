@@ -191,6 +191,27 @@ jobs:
           path: patrol-report/
 ```
 
+## Widget Interactions
+
+All patrol interaction primitives work in dart2js profile builds:
+
+| Action | API | Notes |
+|--------|-----|-------|
+| Tap | `$(widget).tap()` | Works as-is |
+| Enter text | `$(widget).enterText('text')` | Fixed: registers `TestTextInput` on web |
+| Enter text (same field twice) | `$(widget).enterText('new')` | Fixed: skips `reset()` on web to preserve client ID |
+| Long press | `$(widget).longPress()` | Works as-is |
+| Vertical scroll | `$(widget).scrollTo(view: $(listView))` | Works as-is |
+| Horizontal drag | `$.dragUntilExists(finder: ..., view: ..., moveStep: Offset(-200, 0))` | Use `dragUntilExists` with horizontal offset |
+| Drag until exists | `$.dragUntilExists(finder: ..., view: ..., moveStep: Offset(0, -200))` | Works as-is |
+| Wait until visible | `$(widget).waitUntilVisible(timeout: ...)` | Works as-is |
+
+### enterText Fix Details
+
+In DDC debug mode, the web engine is lenient with `TestTextInput` client IDs — text input works without explicit registration. In dart2js profile mode, the engine is stricter: `TestTextInput.register()` must be called so that `TextInput.setClient` captures the correct client ID before `updateEditingState` is sent.
+
+Additionally, `testTextInput.reset()` must be skipped on web because it clears the `_client` ID. When the same field is focused for a second `enterText`, `showKeyboard` doesn't re-send `TextInput.setClient` (field already focused), so the cleared client ID causes the text update to be silently ignored.
+
 ## Troubleshooting
 
 ### "Test starting..." page, nothing happens
