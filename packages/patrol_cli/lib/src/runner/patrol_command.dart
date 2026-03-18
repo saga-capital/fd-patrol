@@ -86,6 +86,14 @@ abstract class PatrolCommand extends Command<int> {
         'source-maps',
         help: 'Generate source maps for debugging stack traces.',
         negatable: true,
+      )
+      ..addFlag(
+        'static',
+        help:
+            'Build a static web bundle for CI parallelism.\n'
+            'Sets --profile -O 1 --source-maps by default.\n'
+            'Serve the output with any HTTP server and run tests with --web-base-url.',
+        negatable: false,
       );
   }
 
@@ -376,9 +384,9 @@ abstract class PatrolCommand extends Command<int> {
       ..addOption(
         'web-base-url',
         help:
-            'Base URL of an already-running Flutter web server. '
-            'When provided, patrol skips building and starting the Flutter web server '
-            'and runs Playwright tests directly against this URL.',
+            'Base URL of a static web build served externally. '
+            'Skips Flutter build/server — runs Playwright directly against this URL. '
+            'Use with "patrol build web --static" for CI parallelism.',
         valueHelp: 'http://localhost:8080',
       );
   }
@@ -437,7 +445,8 @@ abstract class PatrolCommand extends Command<int> {
       if (boolArg('release')) BuildMode.release,
     };
     if (buildModes.isEmpty) {
-      buildModes.add(BuildMode.debug);
+      final useStatic = argResults!.options.contains('static') && boolArg('static');
+      buildModes.add(useStatic ? BuildMode.profile : BuildMode.debug);
     }
 
     if (buildModes.length > 1) {

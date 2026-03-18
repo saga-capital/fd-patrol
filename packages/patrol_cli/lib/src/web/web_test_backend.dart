@@ -64,7 +64,9 @@ class WebTestBackend {
     bool clearTestSteps = false,
   }) async {
     if (options.baseUrl != null) {
-      _logger.info('Using provided base URL: ${options.baseUrl}');
+      _logger
+        ..info('Running against static build at: ${options.baseUrl}')
+        ..detail('Skipping Flutter build and server — using pre-built app.');
       await _runPlaywrightTests(
         options.baseUrl!,
         options,

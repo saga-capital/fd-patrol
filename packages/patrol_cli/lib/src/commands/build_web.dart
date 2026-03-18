@@ -167,10 +167,19 @@ class BuildWebCommand extends PatrolCommand {
       buildNumber: buildNumber,
     );
 
-    final optimizationLevel = stringArg('optimization-level');
+    final isStatic = boolArg('static');
+
+    final optimizationLevel = argResults!.wasParsed('optimization-level')
+        ? stringArg('optimization-level')
+        : isStatic
+            ? '1'
+            : null;
+
     final sourceMaps = argResults!.wasParsed('source-maps')
         ? boolArg('source-maps')
-        : null;
+        : isStatic
+            ? true
+            : null;
 
     final webOpts = WebAppOptions(
       flutter: flutterOpts,
@@ -180,7 +189,27 @@ class BuildWebCommand extends PatrolCommand {
 
     try {
       await _webTestBackend.build(webOpts);
-      _logger.info('build/web/ (web app)');
+      if (isStatic) {
+        _logger
+          ..info('Build output: build/web/')
+          ..info('')
+          ..info('To run tests against this build:')
+          ..info(
+            '  1. Serve:  python3 -m http.server 8080 --directory build/web',
+          )
+          ..info(
+            '  2. Test:   patrol test --device chrome '
+            '--web-base-url=http://localhost:8080',
+          )
+          ..info('')
+          ..info('For CI parallelism, add --web-workers and --web-shard:')
+          ..info(
+            '  patrol test --device chrome --web-base-url=... '
+            '--web-workers=4 --web-shard=1/4',
+          );
+      } else {
+        _logger.info('build/web/ (web app)');
+      }
     } catch (err, st) {
       _logger
         ..err('$err')
