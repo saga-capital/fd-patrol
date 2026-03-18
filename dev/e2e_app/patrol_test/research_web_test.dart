@@ -290,6 +290,42 @@ void main() {
     },
   );
 
+  // -- enterText with TextEditingController (bug repro from ENTERTEXT_WEB_BUG.md) --
+  patrol(
+    'enterText populates TextEditingController',
+    tags: ['web'],
+    ($) async {
+      final controller = TextEditingController();
+
+      await $.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: TextField(
+                key: const Key('emailField'),
+                controller: controller,
+                decoration: const InputDecoration(hintText: 'email@example.com'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await $.tester.pump(const Duration(milliseconds: 500));
+
+      expect($(#emailField), findsOneWidget);
+      expect(controller.text, isEmpty);
+
+      await $(#emailField).enterText('test@example.com');
+      await $.tester.pump(const Duration(milliseconds: 500));
+
+      expect(
+        controller.text,
+        equals('test@example.com'),
+        reason: 'enterText did not populate the TextEditingController',
+      );
+    },
+  );
+
   // -- Intentional failures (error reporting tests) --
   patrol(
     'app crashes when broken widget renders',

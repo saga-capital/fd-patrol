@@ -461,6 +461,25 @@ class PatrolTester {
 
           await tester.enterText(resolvedFinder.first, text);
 
+          // Fallback for web profile/release where TestTextInput doesn't
+          // deliver text to the TextEditingController via platform channels.
+          if (kIsWeb) {
+            final editableText = find.descendant(
+              of: resolvedFinder.first,
+              matching: find.byType(EditableText),
+              matchRoot: true,
+            );
+            if (editableText.evaluate().isNotEmpty) {
+              final state = tester.state<EditableTextState>(editableText);
+              if (state.widget.controller.text != text) {
+                state.widget.controller.text = text;
+                state.widget.controller.selection = TextSelection.collapsed(
+                  offset: text.length,
+                );
+              }
+            }
+          }
+
           if (!kIsWeb) {
             // After interaction is done, we need to reset the testTextInput
             // to not interfere with consecutive interactions in the same test.
