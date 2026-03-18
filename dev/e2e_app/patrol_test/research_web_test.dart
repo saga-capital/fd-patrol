@@ -10,6 +10,10 @@ import 'package:flutter/material.dart';
 
 import 'common.dart';
 
+// ---------------------------------------------------------------------------
+// Test app
+// ---------------------------------------------------------------------------
+
 class WebTestApp extends StatefulWidget {
   const WebTestApp({super.key});
 
@@ -24,7 +28,7 @@ class _WebTestAppState extends State<WebTestApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       routes: {
-        '/': (_) => _HomePage(
+        '/': (_) => _InteractionsPage(
               counter: _counter,
               onIncrement: () => setState(() => _counter++),
             ),
@@ -34,8 +38,8 @@ class _WebTestAppState extends State<WebTestApp> {
   }
 }
 
-class _HomePage extends StatelessWidget {
-  const _HomePage({
+class _InteractionsPage extends StatefulWidget {
+  const _InteractionsPage({
     required this.counter,
     required this.onIncrement,
   });
@@ -44,40 +48,140 @@ class _HomePage extends StatelessWidget {
   final VoidCallback onIncrement;
 
   @override
+  State<_InteractionsPage> createState() => _InteractionsPageState();
+}
+
+class _InteractionsPageState extends State<_InteractionsPage> {
+  String _longPressResult = 'not pressed';
+  bool _showDelayed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future<void>.delayed(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _showDelayed = true);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Patrol dart2js Test')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('Counter value:'),
-            Text(
-              '$counter',
-              key: const Key('counterText'),
-              style: Theme.of(context).textTheme.headlineMedium,
+      body: ListView(
+        key: const Key('mainListView'),
+        children: [
+          // -- Counter --
+          const Text('Counter value:'),
+          Text(
+            '${widget.counter}',
+            key: const Key('counterText'),
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
+
+          const SizedBox(height: 16),
+
+          // -- Text input --
+          const TextField(
+            key: Key('textField'),
+            decoration: InputDecoration(
+              border: OutlineInputBorder(),
+              hintText: 'Enter some text',
             ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              key: const Key('goToBrokenPage'),
-              onPressed: () => Navigator.of(context).pushNamed('/broken'),
-              child: const Text('Go to broken page'),
+          ),
+
+          const SizedBox(height: 16),
+
+          // -- Long press --
+          GestureDetector(
+            key: const Key('longPressTarget'),
+            onLongPress: () => setState(() => _longPressResult = 'long pressed!'),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              color: Colors.blue.shade100,
+              child: const Text('Long press me'),
             ),
-          ],
-        ),
+          ),
+          Text(
+            _longPressResult,
+            key: const Key('longPressResult'),
+          ),
+
+          const SizedBox(height: 16),
+
+          // -- Horizontal scroll --
+          SizedBox(
+            height: 60,
+            child: ListView.builder(
+              key: const Key('horizontalListView'),
+              scrollDirection: Axis.horizontal,
+              itemCount: 30,
+              itemBuilder: (context, index) {
+                if (index == 29) {
+                  return Container(
+                    key: const Key('horizontalScrollTarget'),
+                    width: 150,
+                    color: Colors.green,
+                    alignment: Alignment.center,
+                    child: const Text('H-End'),
+                  );
+                }
+                return Container(
+                  width: 150,
+                  color: index.isEven ? Colors.grey.shade200 : Colors.grey.shade300,
+                  alignment: Alignment.center,
+                  child: Text('H-Item $index'),
+                );
+              },
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // -- Delayed widget (for waitUntilVisible) --
+          if (_showDelayed)
+            const Text(
+              'I appeared after delay',
+              key: Key('delayedWidget'),
+            ),
+
+          const SizedBox(height: 16),
+
+          // -- Navigation --
+          ElevatedButton(
+            key: const Key('goToBrokenPage'),
+            onPressed: () => Navigator.of(context).pushNamed('/broken'),
+            child: const Text('Go to broken page'),
+          ),
+
+          // -- Filler items for vertical scrolling --
+          for (int i = 0; i < 30; i++)
+            ListTile(title: Text('List item $i')),
+
+          // -- Vertical scroll target at bottom --
+          Container(
+            key: const Key('scrollTarget'),
+            padding: const EdgeInsets.all(16),
+            color: Colors.orange,
+            child: const Text('Scroll target reached!'),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: onIncrement,
+        onPressed: widget.onIncrement,
         child: const Icon(Icons.add),
       ),
     );
   }
 }
 
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
 void main() {
-  // Passing test: basic widget interaction
+  // -- Tap --
   patrol(
-    'counter increments on FAB tap',
+    'tap increments counter',
     tags: ['web'],
     ($) async {
       await $.pumpWidgetAndSettle(const WebTestApp());
@@ -90,9 +194,103 @@ void main() {
     },
   );
 
-  // Failing test: widget error caught as fatal in profile mode
-  // Demonstrates: red error widget screenshot, deobfuscated stack trace,
-  // console timeline showing when the crash occurred
+  // -- Enter text (single + double) --
+  patrol(
+    'enterText writes and replaces text',
+    tags: ['web'],
+    ($) async {
+      await $.pumpWidgetAndSettle(const WebTestApp());
+
+      await $(#textField).enterText('Hello, Flutter!');
+      expect($('Hello, Flutter!'), findsOneWidget);
+
+      await $(#textField).enterText('Second input');
+      expect($('Hello, Flutter!'), findsNothing);
+      expect($('Second input'), findsOneWidget);
+    },
+  );
+
+  // -- Long press --
+  patrol(
+    'longPress triggers callback',
+    tags: ['web'],
+    ($) async {
+      await $.pumpWidgetAndSettle(const WebTestApp());
+
+      expect($(#longPressResult).text, 'not pressed');
+      await $(#longPressTarget).longPress();
+      expect($(#longPressResult).text, 'long pressed!');
+    },
+  );
+
+  // -- Vertical scroll --
+  patrol(
+    'scrollTo finds widget at bottom of list',
+    tags: ['web'],
+    ($) async {
+      await $.pumpWidgetAndSettle(const WebTestApp());
+
+      // scrollTarget is off-screen at the bottom
+      expect($(#scrollTarget).hitTestable(), findsNothing);
+
+      await $(#scrollTarget).scrollTo(view: $(#mainListView));
+      expect($(#scrollTarget), findsOneWidget);
+      expect($('Scroll target reached!'), findsOneWidget);
+    },
+  );
+
+  // -- Horizontal scroll --
+  patrol(
+    'horizontal drag finds widget at end of list',
+    tags: ['web'],
+    ($) async {
+      await $.pumpWidgetAndSettle(const WebTestApp());
+
+      // horizontalScrollTarget is off-screen to the right
+      expect($(#horizontalScrollTarget).hitTestable(), findsNothing);
+
+      await $.dragUntilExists(
+        finder: $(#horizontalScrollTarget),
+        view: $(#horizontalListView),
+        moveStep: const Offset(-200, 0),
+      );
+      expect($(#horizontalScrollTarget), findsOneWidget);
+      expect($('H-End'), findsOneWidget);
+    },
+  );
+
+  // -- dragUntilExists --
+  patrol(
+    'dragUntilExists scrolls to hidden widget',
+    tags: ['web'],
+    ($) async {
+      await $.pumpWidgetAndSettle(const WebTestApp());
+
+      expect($(#scrollTarget).hitTestable(), findsNothing);
+
+      await $.dragUntilExists(
+        finder: $(#scrollTarget),
+        view: $(#mainListView),
+        moveStep: const Offset(0, -200),
+      );
+      expect($(#scrollTarget), findsOneWidget);
+    },
+  );
+
+  // -- waitUntilVisible --
+  patrol(
+    'waitUntilVisible waits for delayed widget',
+    tags: ['web'],
+    ($) async {
+      await $.pumpWidgetAndSettle(const WebTestApp());
+
+      // Widget appears after ~2s delay
+      await $(#delayedWidget).waitUntilVisible(timeout: const Duration(seconds: 5));
+      expect($('I appeared after delay'), findsOneWidget);
+    },
+  );
+
+  // -- Intentional failures (error reporting tests) --
   patrol(
     'app crashes when broken widget renders',
     tags: ['web'],
@@ -102,15 +300,11 @@ void main() {
       await $(#goToBrokenPage).tap();
       await $.pumpAndSettle();
 
-      // Tapping this triggers _CrashingWidget which throws RangeError in build()
-      // In profile mode, this is fatal and fails the test immediately
       await $(#triggerErrorButton).tap();
       await $.pumpAndSettle();
     },
   );
 
-  // Failing test: assertion failure with readable error
-  // Demonstrates: "Expected: '42' Actual: '1'" in error banner
   patrol(
     'intentional failure - counter shows wrong value',
     tags: ['web'],

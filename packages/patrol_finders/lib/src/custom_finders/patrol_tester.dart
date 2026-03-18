@@ -415,14 +415,14 @@ class PatrolTester {
     Alignment alignment = Alignment.center,
     bool enablePatrolLog = true,
   }) {
-    if (!kIsWeb) {
-      // Fix for enterText() not working in release mode on real iOS devices.
-      // See https://github.com/flutter/flutter/pull/89703
-      // Also the fix for enterText() is not able to interact with the same
-      // textfield 2 times in the same test.
-      // See https://github.com/flutter/flutter/issues/134604
-      tester.testTextInput.register();
-    }
+    // Fix for enterText() not working in release mode on real iOS devices.
+    // See https://github.com/flutter/flutter/pull/89703
+    // Also the fix for enterText() not able to interact with the same
+    // textfield 2 times in the same test.
+    // See https://github.com/flutter/flutter/issues/134604
+    // Also needed on web for dart2js profile builds where the engine
+    // doesn't deliver text without a registered TestTextInput client.
+    tester.testTextInput.register();
     return TestAsyncUtils.guard(
       () => wrapWithPatrolLog(
         action: 'enterText',
@@ -464,6 +464,8 @@ class PatrolTester {
           if (!kIsWeb) {
             // After interaction is done, we need to reset the testTextInput
             // to not interfere with consecutive interactions in the same test.
+            // On web (dart2js profile), resetting clears _client which breaks
+            // subsequent enterText calls on the same already-focused field.
             tester.testTextInput.reset();
           }
           await _performPump(
