@@ -37,6 +37,14 @@ class PatrolReporter implements Reporter {
     // noop
   }
 
+  onStdOut(chunk: string | Buffer) {
+    process.stdout.write(chunk)
+  }
+
+  onStdErr(chunk: string | Buffer) {
+    process.stderr.write(chunk)
+  }
+
   onTestEnd(test: TestCase, result: TestResult) {
     const assetsDir = path.join(this.outputFolder, "patrol-assets")
     fs.mkdirSync(assetsDir, { recursive: true })
@@ -131,6 +139,10 @@ class PatrolReporter implements Reporter {
     if (this.tests.length === 0) return
 
     fs.mkdirSync(this.outputFolder, { recursive: true })
+
+    // Write machine-readable JSON results (used by merge-reports job)
+    const jsonPath = path.join(this.outputFolder, "patrol-results.json")
+    fs.writeFileSync(jsonPath, JSON.stringify(this.tests, null, 2), "utf-8")
 
     // Generate per-test detail pages
     for (const test of this.tests) {
